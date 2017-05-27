@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>IFT3150 - Carlos Sanchez</title>
+	  <link rel="stylesheet" href="styles.css">
+	  <link href="https://fonts.googleapis.com/css?family=Montserrat|Open+Sans" rel="stylesheet">
+	</head>
+
+	<body>
+		  <div class="nav">
+		  	<ul>
+		  		<li class="li-presentation"><a href="#presentation">Présentation</a></li>
+		  		<li class="li-implementation"><a href="#implementation">Implémentation</a></li>
+		  		<li class="li-rapports"><a href="#rapports">Journal de bord</a></li>
+		  		<li class="li-ressources"><a href="#ressources">Ressources</a></li>
+		  	</ul>
+		  </div>
+
+
+	  <div class="section-container">
+	  	
+	  	<h1 class="title">IFT3150 - Projet d'informatique</h1>
+		  <h3>Réalisé par Carlos Sanchez sous la supervision de Sébastien Roy</h3>
+
+		  <section id="presentation">
+		  	
+		  	<article>
+		  		<h4 class="sub-title">Présentation générale du projet</h4>
+		  		<p>Dans le cadre du cours <i>IFT3150 - Projet d'informatique</i>, je réaliserai un système de cafétière qui permettra un paiement automatique au millilitre à l'aide d'une puce électronique. La mesure du volume se ferait à l'aide d'une balance et les informations transactionnelles seront encryptés dans la puce. Cette idée m'a été proposée par Sébastien Roy qui assurera la supervision du projet. Elle a été pensée dans le but de possiblement remplacer le système de "paiement d'honeur" à la boite à 50 sous du café étudiant de math-info.</p>
+		  	</article>
+		  
+		  </section>
+			
+		  <section id="implementation">
+		  	
+		  	<article>
+		  		<h4 class="sub-title">Détails et implémentation</h4>
+		  		
+		  		<h2>Survol matériel</h2>
+
+		  		<p>Deux approches sont à considérer pour ce projet. La première serait d'avoir un seul module qui fait la lecture/écriture de la puce en plus de la mesure du volume. Cette implémentation permettrait de coller la puce à une tasse et la transaction se ferait en une étape. La seconde consisterait à avoir deux modules: un pour mesurer le volume et le second pour lire la puce et faire la transaction. Cette approche ne limiterait pas l'utilisateur à une seule tasse si jamais il l'oublie.</p>
+
+		  		<p>Afin que l'utilisateur puisse ajouter des fonds à sa puce, il devra passer à la caisse du café étudiant où il paiera aux employés le montant qu'il désire mettre dans sa puce. Ensuite les employés pourront recharger la puce avec le bon montant à l'aide d'un module "maitre" dédié à cet usage.</p>
+
+					<p>Le projet sera implémenté sur la plateforme de prototypage <i>Arduino</i>. C'est une approche idéale car elle est peu coûteuse et accèssible grâce aux ressources disponibles en ligne pour travailler avec les capteurs necéssaires. </p>
+
+					<img src="img/schema.jpg" alt="Schéma du module">
+					
+					<h2>Contraintes matérielles</h2>
+
+					<p>Comme nous pouvons le constater sur le schéma, la principale contrainte que nous avons est que nous devons absolument rendre le module étanche aux liquides. Puisque nous manipulons le café directement sur le boîtier, nous devons être en mesure de protéger le matériel électronique et trouver un moyen rediriger le liquide coulé dans un récipient prévu à cet effet.</p>
+
+					<p>En deuxième lieu, nous devons être en mesure d'utiliser les cafétières thermiques du café étudiant. Notre module doit donc être assez petit pour s'insérer dans la base existante sans avoir à la modifier.</p>
+
+					<p>Finalement, les informations sur la puce doivent être encryptées afin que l'on ne puisse pas recopier à l'infini une puce contenant des fonds pour éviter de payer. </p>
+
+					<h2>Cas d'utilisation</h2>
+
+					<p>Pour le premier type d'implémentation, un cas d'utilisation typique se déroulerait ainsi:</p>
+		  		<ol class="use-case">
+		  			<li>Le module allume une LED d'état de couleur BLEUE et l'affichage numérique indique que la machine est prête à être utilisée</li>
+		  			<li>L'utilisateur dépose sa tasse sur le module, l'affichage numérique indique que le module se prépare et la LED de couleur JAUNE s'allume:
+							<ul>
+									<li>Le module lit les informations sur la puce.</li>
+									<li>Le module calibre la balance (on met le poid à 0 avec la tasse vide).</li>
+							</ul>
+		  			</li>
+		  			<li>Après la lecture et la calibration, la LED d'état VERTE s'allume et l'affichage indique de faire couler le café</li>
+		  			<li>Lorsque l'utilisateur arrête de faire couler:
+							<ul>
+									<li>Le module détecte la stabilité du poids, indiquant la fin du remplissage.</li>
+									<li>La LED d'état JAUNE s'allume indiquant d'attendre.</li>
+									<li>Le module soustrait le montant de la puce et la met à jour.</li>
+							</ul>
+		  			</li>
+		  			<li>Les LED d'état BLEU et VERT clignotent en alternance indiquant la fin de la transaction.</li>
+		  			<li>L'usager reprend sa tasse et on retourne à l'étape 1.</li>
+		  		</ol>
+
+		  		<p>Pour le second type d'implémentation, un cas d'utilisation typique se déroulerait ainsi:</p>
+		  		<ol class="use-case">
+		  			<li>Le module allume une LED d'état de couleur BLEUE et l'affichage numérique indique que la machine est prête à être utilisée</li>
+		  			<li>L'utilisateur dépose sa tasse sur le module, l'affichage numérique indique de déposer la puce au lecteur:
+							<ul>
+									<li>Le module lit les informations sur la puce.</li>
+									<li>Le module calibre la balance (on met le poid à 0 avec la tasse vide).</li>
+							</ul>
+		  			</li>
+		  			<li>Après la lecture et la calibration, la LED d'état VERTE s'allume et l'affichage indique de faire couler le café.</li>
+		  			<li>Lorsque l'utilisateur arrête de faire couler:
+							<ul>
+									<li>Le module détecte la stabilité du poids, indiquant la fin du remplissage.</li>
+									<li>La LED d'état JAUNE s'allume indiquant d'attendre.</li>
+									<li>Le module soustrait le montant de la puce et la met à jour.</li>
+							</ul>
+		  			</li>
+		  			<li>Les LED d'état BLEU et VERT clignotent en alternance indiquant la fin de la transaction.</li>
+		  			<li>L'usager reprend sa tasse et la puce puis on retourne à l'étape 1.</li>
+		  		</ol>	
+					
+					<p>Dans les deux cas, l'usager peut avoir un solde négatif suite à une transaction. Cependant, s'il a des fonds négatifs au moment de la lecture de la puce, les 3 LED clignoteront et l'affichage indiquera à l'usager de passer à la caisse pour ajouter des fonds.</p>
+		  	</article>
+		  
+		  </section>
+
+		  <section id="rapports">
+		  	<article>
+		  		<h4 class="sub-title">Rapport hebdomadaire</h4>
+				<h2>Semaine 1 - 8 au 12 mai</h2>
+				<p>Sébastien et moi avons planifié plus en détail la structure du projet. Nous avons discuté des possibilités d'implémentation au niveau matériel et des plateformes de prototypage à utiliser (Arduino vs Raspberry Pi ou les deux). J'ai aussi monté ce site pour la présentation du projet.</p>
+				
+				<p>J'ai commencé à faire des tests avec le senseur et l'affichage graphique. Les librairies pour la balance et l'écran ont rendu la tâche plus fluide que je m'attendais, tout a été très simple à coder. Cependant, le senseur de poids est très fragile, il a arrêté de fonctionner un soir et fonctionnait parfaitement le lendemain.... Voici quelques images du projet à ce jour: </p>
+				<img src="img/proto_tout.jpg" alt="Premier prototype"><br/>
+				<img src="img/proto_profil.jpg" alt="Balance vue de profil"><br/>
+				<img src="img/proto_electronique.jpg" alt="Circuit"><br/>
+				<video controls muted>
+				  <source src="img/proto_video.webm" type="video/webm">
+				Your browser does not support the video tag.
+				</video>
+
+		  	</article>
+		  </section>
+
+		  <section id="ressources">
+		  	<article>
+		  		<h4 class="sub-title">Ressources utilisées</h4>
+		  		
+		  		<h2>Matériel</h2>
+
+					<ul>
+						<li><a href="https://www.adafruit.com/product/3505">Adafruit Metro M0 Express (Arduino compatible)</a></li>
+						<li><a href="https://www.adafruit.com/product/364">PN532 NFC/RFID Controller</a></li>
+						<li><a href="https://www.sparkfun.com/products/13329">10Kg Load Cell</a></li>
+						<li><a href="https://www.sparkfun.com/products/13879">HX711 Load Cell Amplifier</a></li>
+						<li><a href="https://www.sparkfun.com/products/10635">Blue LED</a></li>
+						<li><a href="https://www.sparkfun.com/products/10633">Green LED</a></li>
+						<li><a href="https://www.sparkfun.com/products/10634">Yellow LED</a></li>
+						<li><a href="">LCD Display</a></li>
+						<li><a href="https://www.makerbot.com/">Imprimante 3D</a></li>
+						<li>Composantes électronique générales: résistors, condensateurs, connecteurs, filage etc.</li>
+					</ul>
+					
+					<h2>Sources</h2>
+
+					<ul>
+						<li><a href="https://learn.sparkfun.com/tutorials/getting-started-with-load-cells?_ga=2.1181880.868726188.1494373012-1031908552.1493933909">Informations sur les load cells</a></li>
+						<li><a href="https://learn.sparkfun.com/tutorials/load-cell-amplifier-hx711-breakout-hookup-guide">Implémentation d'un load cell</a></li>
+						<li><a href="https://learn.adafruit.com/adafruit-metro-m0-express-designed-for-circuitpython/setup">Adafruit Metro Setup avec le IDE Arduino</a></li>
+						<li><a href="https://learn.adafruit.com/adafruit-pn532-rfid-nfc/overview">Documentation du module NFC</a></li>
+					</ul>
+		  	</article>
+		  </section>
+	  </div>
+	  <script src="script.js"></script>
+	</body>
+</html>

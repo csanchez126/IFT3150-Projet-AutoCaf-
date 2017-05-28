@@ -49,7 +49,7 @@
 					
 					<h2>Contraintes matérielles</h2>
 
-					<p>Comme nous pouvons le constater sur le schéma, la principale contrainte que nous avons est que nous devons absolument rendre le module étanche aux liquides. Puisque nous manipulons le café directement sur le boîtier, nous devons être en mesure de protéger le matériel électronique et trouver un moyen rediriger le liquide coulé dans un récipient prévu à cet effet.</p>
+					<p>Comme nous pouvons le constater sur le schéma, la principale contrainte que nous avons est que nous devons absolument rendre le module étanche aux liquides. Puisque nous manipulons le café directement sur le boîtier, nous devons être en mesure de protéger le matériel électronique et trouver un moyen de rediriger le liquide coulé dans un récipient prévu à cet effet.</p>
 
 					<p>En deuxième lieu, nous devons être en mesure d'utiliser les cafétières thermiques du café étudiant. Notre module doit donc être assez petit pour s'insérer dans la base existante sans avoir à la modifier.</p>
 
@@ -119,12 +119,23 @@
 				Your browser does not support the video tag.
 				</video>
 
+				<h2>Semaines 2 et 3 - 15 au 26 mai</h2>
+				<p>Le progrès a été plutôt lent ces deux dernières semaines dû au matériel inconsistent et d'un examen intra. J'ai implémenté un système de stabilité de poids afin de détecter un dépôt de tasse sur la balance. Il est basé sur la variation du poids (deltaPoids/deltaTemps). Passé un seuil de variation, on déclenche le système attendant une stabilité (variation de poids nulle) pendant X secondes dépendament du mode du système. Une fois la stabilité détectée, le système fait une remise à zéro automatique.</p>
+
+				<p>J'ai aussi commencé l'implémentation de la boucle d'utilisation Standby → Dépôt de tasse → Authentification NFC → Service → Paiement → Réinitialisation → Standby. Pour le moment le système est fonctionnel mais je dois réorganiser le code de manière plus claire. J'ai aussi installé une LED verte et rouge pour signifier l'état du système mais les motifs de clignotage et la signification des lumières selon l'état du système est à retravailler pour que ce soit plus clair pour l'utilisateur. Je prévois l'utilisation de LED supplémentaires afin de mieux communiquer l'état du système et d'éviter toute ambiguïtée.</p>
+				
+				<p>Le code source est maintenant disponible sur le repo suivant: <a href="https://github.com/csanchez126/IFT3150-Projet-AutoCafe">https://github.com/csanchez126/IFT3150-Projet-AutoCafe</a></p>
 		  	</article>
 		  </section>
 
 		  <section id="ressources">
 		  	<article>
 		  		<h4 class="sub-title">Ressources utilisées</h4>
+
+		  		<h2>Code Source</h2>
+		  		<ul>
+		  			<li><a href="https://github.com/csanchez126/IFT3150-Projet-AutoCafe">Page GitHub</a></li>
+		  		</ul>
 		  		
 		  		<h2>Matériel</h2>
 

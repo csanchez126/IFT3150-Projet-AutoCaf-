@@ -125,6 +125,23 @@
 				<p>J'ai aussi commencé l'implémentation de la boucle d'utilisation Standby → Dépôt de tasse → Authentification NFC → Service → Paiement → Réinitialisation → Standby. Pour le moment le système est fonctionnel mais je dois réorganiser le code de manière plus claire. J'ai aussi installé une LED verte et rouge pour signifier l'état du système mais les motifs de clignotage et la signification des lumières selon l'état du système est à retravailler pour que ce soit plus clair pour l'utilisateur. Je prévois l'utilisation de LED supplémentaires afin de mieux communiquer l'état du système et d'éviter toute ambiguïtée.</p>
 				
 				<p>Le code source est maintenant disponible sur le repo suivant: <a href="https://github.com/csanchez126/IFT3150-Projet-AutoCafe">https://github.com/csanchez126/IFT3150-Projet-AutoCafe</a></p>
+
+				<h2>Semaines 4 et 5 - 29 mai au 9 juin </h2>
+				<p>J'ai procédé à l'adaptation du code source .ino pour passer en C++ afin d'utiliser un éditeur plus pratique que Arduino. J'utilise désormais Atom avec le plugin PlatformIO, me permettant de programmer le microcontrolleur en C++ et de profiter des fonctions d'éditeurs plus pratques comme le auto complete de fonctions et de variables. J'ai aussi restructuré mon code de manière plus claire en créant une classe Scale contenant les fonctions qui concernent uniquement la balance. Suite aux commentaires de Sébastien, j'ai aussi modifié cette classe pour la dissocier le plus possible de la logique de la boucle d'utilisation et du status général du système.</p>
+
+				<p>Présentement, la logique générale ressemblera à ceci: </p>
+				<img src="img/Graphe1.png" alt="Premier prototype"><br/>
+
+				<p>Il sera mis à jour au courant de la session, lorsque le lecteur de carte sera intégré dans la boucle d'utilisation.</p>
+
+				<p>J'ai aussi commencé à travailler avec le lecteur NFC. Je dispose présentement de deux types de cartes, deux MiFare classic de 1kB de mémoire et un MiFare Ultralight de 64bytes. La structure de mémoire des deux types est bien différente et j'aurai beaucoup de documentation à lire par rapport au fonctionnement des cartes MiFare.</p>
+
+				<video controls muted>
+				  <source src="img/nfc.webm" type="video/webm">
+				Your browser does not support the video tag.
+				</video>
+
+
 		  	</article>
 		  </section>
 

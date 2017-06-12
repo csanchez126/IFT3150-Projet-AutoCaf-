@@ -5,7 +5,7 @@
 class Scale
 {
 private:
-  HX711* scale;
+  HX711* hx711;
   float calibration_factor;
 
   float weightVarThresh;
@@ -20,31 +20,43 @@ private:
   float drinkWeight;
   float weightVar;
   float lastStableWeight;
-  float sensorWeight;
+  float readWeight;
   float lastReadWeight;
+
+  float start;
+  float zero;
 
 public:
   Scale(int DOUT, int CLK);
-  void fluctuationListen();
-  void stabilityCheck();
+  void  fluctuationListen();
+  void  stabilityCheck();
+  void  stabilityCheck2();
   float getSensorWeight();
-  void updateWeight();
+  void  updateWeight();
   float getLastStableWeight();
-  float getLastReadWeight();
-  float getContainerWeight();
+  float getReadWeight();
+
   void resetDrink();
 
   void setStandbySensitivity();
   void setServingSensitivity();
   void setClearingSensitivity();
 
-  void setCalibrationFactor(float fact);
+  void  setCalibrationFactor(float fact);
   float getCalibrationFactor();
 
   float getWeightVar();
 
   void init();
   void reset();
+
+  bool isStable();
+
+  void  setContainerWeight(float weight);
+  float getContainerWeight();
+  void  setDrinkWeight(float weight);
+  float getDrinkWeight();
+
 };
 
 #endif

@@ -6,8 +6,8 @@
 extern STATUS sysStatus;
 
 Scale::Scale(int dout, int clk){
-  scale = new HX711(dout, clk);
-  calibration_factor = 200;
+  hx711 = new HX711(dout, clk);
+  calibration_factor = 221;
   weightVarThresh = 0.5;
   weightDiffThresh = 5;
   stableTime = 3000;
@@ -20,8 +20,11 @@ Scale::Scale(int dout, int clk){
   drinkWeight = 0;
   weightVar = 0;
   lastStableWeight = 0;
-  sensorWeight = 0;
+  readWeight = 0;
   lastReadWeight = 0;
+
+  start = millis();
+  zero = 0;
 }
 
 void Scale::fluctuationListen(){
@@ -40,64 +43,46 @@ void Scale::fluctuationListen(){
   }
 }
 
-void Scale::stabilityCheck(){
-  fluctuationListen();
+void Scale::stabilityCheck2(){
+  if(abs(readWeight-lastStableWeight) > 1 && !isTaring){
+    Serial.println("Weight Diff: "+String(abs(readWeight-lastStableWeight)));
+    waitingForStability = true; // Change of weight detected
+  }else{ // Bypass fluctuation from isTaring scale
+    isTaring = false;
+  }
   if(waitingForStability){
-    if((millis()-fluctuationTime) > stableTime){
-      waitingForStability = false;
-      //Weight stabilized,
-      if(abs(lastStableWeight-sensorWeight)> weightDiffThresh ){
-        lastStableWeight = sensorWeight;
-        Serial.println("Last stable weight: "+String(lastStableWeight, 3));
-
-        // Context of our stability
-        switch(sysStatus){
-          case STANDBY:
-            isTaring = true;
-            scale->tare();
-            containerWeight = lastStableWeight;
-            break;
-          case SERVING:
-            isTaring = true;
-            scale->tare();
-            Serial.println("Serving done after 4 second stability");
-            drinkWeight = lastStableWeight;
-            Serial.println("Drink weight: "+String(drinkWeight));
-            Serial.println("Hold on for payment");
-            sysStatus = PAYMENT;
-          break;
-          case CLEARING:
-            endingTransaction = true;
-            digitalWrite(RED_LED_PIN, LOW);
-            digitalWrite(GREEN_LED_PIN, HIGH);
-          break;
-        }
+    if(abs(readWeight-lastReadWeight)<1){
+      if(millis()-start > 3000){
+        //STABLE WEIGHT!
+        waitingForStability = false;
+        lastStableWeight = readWeight;
+        Serial.println("New lastStableWeight: "+String(lastStableWeight));
+        //Counter drifting
+        // if(lastStableWeight <= 1 && lastStableWeight >= -1){
+        //   this -> reset();
+        // }
       }
-      else{
-        Serial.println("Not stable");
-      }
+    }else{
+      start = millis();
     }
   }
 }
 
 float Scale::getSensorWeight(){
-  scale->set_scale(calibration_factor); //Adjust to this calibration factor
-  float sensorWeight = scale->get_units();
-  if(sensorWeight < 0 && sensorWeight > -1) //Remove -0 displaying
-    sensorWeight = 0;
-  return sensorWeight;
+  return hx711->get_units();
 }
 
 void Scale::updateWeight(){
   //Scale activity
-  sensorWeight = getSensorWeight();
-  weightVar = (sensorWeight - lastReadWeight)/LOOP_DELTA; //Delta weight/delta Time
-  lastReadWeight = sensorWeight;
+  //sensorWeight = getSensorWeight();
+  //weightVar = (sensorWeight - readWeight)/LOOP_DELTA; //Delta weight/delta Time
+  lastReadWeight = readWeight;
+  readWeight = getSensorWeight();
+  if(readWeight < 0 && readWeight > -1){ //Remove -0 displaying
+    readWeight = 0;
+  }
 }
 
-float Scale::getContainerWeight(){
-  return containerWeight;
-}
 
 void Scale::resetDrink(){
   containerWeight = 0;
@@ -105,20 +90,36 @@ void Scale::resetDrink(){
 }
 
 void Scale::init(){
-  scale->set_scale();
-  scale->tare();
+  hx711->set_scale(calibration_factor);
+  hx711->tare();
+  float start = millis();
+  float initialWeight = getSensorWeight();
+  waitingForStability = true;
+  while(waitingForStability){
+    if(abs(initialWeight-getSensorWeight())<1){
+      if((millis()-start) >= 3000){
+        zero = initialWeight;
+        lastStableWeight = zero;
+        waitingForStability = false;
+      }
+    }else{
+      start = millis();
+    }
+  }
+  Serial.println("Init done!");
 }
 
 void Scale::reset(){
-  scale->tare();
+  isTaring = true;
+  hx711->tare();
 }
 
 float Scale::getLastStableWeight(){
   return lastStableWeight;
 }
 
-float Scale::getLastReadWeight(){
-  return lastReadWeight;
+float Scale::getReadWeight(){
+  return readWeight;
 }
 
 void Scale::setStandbySensitivity(){
@@ -148,4 +149,23 @@ float Scale::getCalibrationFactor(){
 
 float Scale::getWeightVar(){
   return weightVar;
+}
+
+bool Scale::isStable(){
+  return !waitingForStability;
+}
+
+void Scale::setContainerWeight(float weight){
+  containerWeight = weight;
+  return;
+}
+float Scale::getContainerWeight(){
+  return containerWeight;
+}
+void Scale::setDrinkWeight(float weight){
+  drinkWeight = weight;
+  return;
+}
+float Scale::getDrinkWeight(){
+  return drinkWeight;
 }

@@ -28,9 +28,7 @@ private:
 
 public:
   Scale(int DOUT, int CLK);
-  void  fluctuationListen();
   void  stabilityCheck();
-  void  stabilityCheck2();
   float getSensorWeight();
   void  updateWeight();
   float getLastStableWeight();

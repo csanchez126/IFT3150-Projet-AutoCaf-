@@ -27,25 +27,9 @@ Scale::Scale(int dout, int clk){
   zero = 0;
 }
 
-void Scale::fluctuationListen(){
-  if(abs(weightVar)>weightVarThresh){ //If genuine fluctuation
-    if(!isTaring && !endingTransaction){ //If weight fluction not from system status change of tare
-      //Serial.println("Flux detected: "+String(weightVar,2)+", went from "+String((int) abs(weightVar*loopDelta))+" to "+String(sensorWeight,2));
-      waitingForStability = true;
-      fluctuationTime = millis();
-      digitalWrite(RED_LED_PIN, HIGH);
-      digitalWrite(GREEN_LED_PIN, LOW);
-    }else{ // Bypass fluctuation from isTaring scale
-      isTaring = false;
-      endingTransaction = false;
-      waitingForStability = false;
-    }
-  }
-}
-
-void Scale::stabilityCheck2(){
+void Scale::stabilityCheck(){
   if(abs(readWeight-lastStableWeight) > 1 && !isTaring){
-    Serial.println("Weight Diff: "+String(abs(readWeight-lastStableWeight)));
+    //Serial.println("Weight Diff: "+String(abs(readWeight-lastStableWeight)));
     waitingForStability = true; // Change of weight detected
   }else{ // Bypass fluctuation from isTaring scale
     isTaring = false;
@@ -82,7 +66,6 @@ void Scale::updateWeight(){
     readWeight = 0;
   }
 }
-
 
 void Scale::resetDrink(){
   containerWeight = 0;

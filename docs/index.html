@@ -141,6 +141,10 @@
 				Your browser does not support the video tag.
 				</video>
 
+				<h2>Semaines 6 et 7 - 12 juin au 23 juin </h2>
+				<p>Les progrès ont été lents (dû à la préparation d'examens) mais significative. J'arrive à lire et écrire sur les cartes à puce "jettables" de type MiFare Ultralight. Ces cartes ont une mémoire dottée de 16 pages de 4bytes chacune, pour un total de 64bytes lisibles. Les pages 4 à 15 peuvent être utilisées pour l'écriture et pour le moment, j'écris les informations transactionelles sur les pages 12 à 15. La page 12 sert à stocker le solde de la carte, les pages 13 et 14 servent à stocker le UID de la carte pour des fins d'authentifications, et la 15ème page est libre pour l'instant. La librairie du lecteur NFC supportait partiellement les cartes Ultralight et j'ai dû la modifier afin de répondre aux besoins du projet. Elle était déja bien documentée dans les commentaires alors les modifications n'ont pas été trop difficiles à implémenter.</p>
+
+				<p>Dans les prochains jours, je commencerai à lire sur la cryptographie afin de planifier un système d'encryption des données pour protéger le système contre les cartes clônées. </p>
 
 		  	</article>
 		  </section>
@@ -171,7 +175,7 @@
 					
 					<h2>Sources</h2>
 
-					<ul>
+					<ul><li><a href="http://www.nxp.com/documents/data_sheet/MF0ICU1.pdf">Fiche technique de la puce NFC</a></li>
 						<li><a href="https://learn.sparkfun.com/tutorials/getting-started-with-load-cells?_ga=2.1181880.868726188.1494373012-1031908552.1493933909">Informations sur les load cells</a></li>
 						<li><a href="https://learn.sparkfun.com/tutorials/load-cell-amplifier-hx711-breakout-hookup-guide">Implémentation d'un load cell</a></li>
 						<li><a href="https://learn.adafruit.com/adafruit-metro-m0-express-designed-for-circuitpython/setup">Adafruit Metro Setup avec le IDE Arduino</a></li>

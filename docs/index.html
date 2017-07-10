@@ -106,8 +106,11 @@
 
 		  <section id="rapports">
 		  	<article>
+		  		
 		  		<h4 class="sub-title">Rapport hebdomadaire</h4>
+				
 				<h2>Semaine 1 - 8 au 12 mai</h2>
+				
 				<p>Sébastien et moi avons planifié plus en détail la structure du projet. Nous avons discuté des possibilités d'implémentation au niveau matériel et des plateformes de prototypage à utiliser (Arduino vs Raspberry Pi ou les deux). J'ai aussi monté ce site pour la présentation du projet.</p>
 				
 				<p>J'ai commencé à faire des tests avec le senseur et l'affichage graphique. Les librairies pour la balance et l'écran ont rendu la tâche plus fluide que je m'attendais, tout a été très simple à coder. Cependant, le senseur de poids est très fragile, il a arrêté de fonctionner un soir et fonctionnait parfaitement le lendemain.... Voici quelques images du projet à ce jour: </p>
@@ -120,6 +123,7 @@
 				</video>
 
 				<h2>Semaines 2 et 3 - 15 au 26 mai</h2>
+				
 				<p>Le progrès a été plutôt lent ces deux dernières semaines dû au matériel inconsistent et d'un examen intra. J'ai implémenté un système de stabilité de poids afin de détecter un dépôt de tasse sur la balance. Il est basé sur la variation du poids (deltaPoids/deltaTemps). Passé un seuil de variation, on déclenche le système attendant une stabilité (variation de poids nulle) pendant X secondes dépendament du mode du système. Une fois la stabilité détectée, le système fait une remise à zéro automatique.</p>
 
 				<p>J'ai aussi commencé l'implémentation de la boucle d'utilisation Standby → Dépôt de tasse → Authentification NFC → Service → Paiement → Réinitialisation → Standby. Pour le moment le système est fonctionnel mais je dois réorganiser le code de manière plus claire. J'ai aussi installé une LED verte et rouge pour signifier l'état du système mais les motifs de clignotage et la signification des lumières selon l'état du système est à retravailler pour que ce soit plus clair pour l'utilisateur. Je prévois l'utilisation de LED supplémentaires afin de mieux communiquer l'état du système et d'éviter toute ambiguïtée.</p>
@@ -127,6 +131,7 @@
 				<p>Le code source est maintenant disponible sur le repo suivant: <a href="https://github.com/csanchez126/IFT3150-Projet-AutoCafe">https://github.com/csanchez126/IFT3150-Projet-AutoCafe</a></p>
 
 				<h2>Semaines 4 et 5 - 29 mai au 9 juin </h2>
+				
 				<p>J'ai procédé à l'adaptation du code source .ino pour passer en C++ afin d'utiliser un éditeur plus pratique que Arduino. J'utilise désormais Atom avec le plugin PlatformIO, me permettant de programmer le microcontrolleur en C++ et de profiter des fonctions d'éditeurs plus pratques comme le auto complete de fonctions et de variables. J'ai aussi restructuré mon code de manière plus claire en créant une classe Scale contenant les fonctions qui concernent uniquement la balance. Suite aux commentaires de Sébastien, j'ai aussi modifié cette classe pour la dissocier le plus possible de la logique de la boucle d'utilisation et du status général du système.</p>
 
 				<p>Présentement, la logique générale ressemblera à ceci: </p>
@@ -142,9 +147,18 @@
 				</video>
 
 				<h2>Semaines 6 et 7 - 12 juin au 23 juin </h2>
+				
 				<p>Les progrès ont été lents (dû à la préparation d'examens) mais significative. J'arrive à lire et écrire sur les cartes à puce "jettables" de type MiFare Ultralight. Ces cartes ont une mémoire dottée de 16 pages de 4bytes chacune, pour un total de 64bytes lisibles. Les pages 4 à 15 peuvent être utilisées pour l'écriture et pour le moment, j'écris les informations transactionelles sur les pages 12 à 15. La page 12 sert à stocker le solde de la carte, les pages 13 et 14 servent à stocker le UID de la carte pour des fins d'authentifications, et la 15ème page est libre pour l'instant. La librairie du lecteur NFC supportait partiellement les cartes Ultralight et j'ai dû la modifier afin de répondre aux besoins du projet. Elle était déja bien documentée dans les commentaires alors les modifications n'ont pas été trop difficiles à implémenter.</p>
 
 				<p>Dans les prochains jours, je commencerai à lire sur la cryptographie afin de planifier un système d'encryption des données pour protéger le système contre les cartes clônées. </p>
+
+				<h2>Semaines 8 et 9 - 24 juin au 4 juillet </h2>
+				
+				<p>La partie cryptographie est entamée. J'utilise la librairie <a href="https://rweather.github.io/arduinolibs/classChaCha.html">ChaCha pour Arduino</a> qui est une variante de la crypto <a href="http://cr.yp.to/snuffle/salsafamily-20071225.pdf">Salsa20</a>. Cet algo très simple mais robuste prend une clé de cyptage, un vecteur d'initialisation et un "block counter" qui est un tableau servant à gerer les blocs de données générées par l'algo. L'algorithme utilise ces données pour générer des matrices de bytes sur lequelles il applique des additions, des rotations de bits et des ou exclusifs entre les données du tableaux pour mélanger les données. On peut répéter ces opérations un nombre arbitraire de fois pour augmenter sa fiabilité.</p>
+
+				<p>Le projet est à un stade ou sa fonction principale est implémentée de manière assez fiable. Je dois essayer de le "briser" pour trouver des failles ou des problèmes qui m'auraient échappé. Je dois aussi implémenter un mode de recharge de carte et trouver une manière de rendre la calibration de la balance accessible. De plus, suite à une discussion avec Sébastien, nous allons probablement opter pour un des LEDs RGB configurées en anneau que nous placerions dans la balance. Cette option permettrait de mieux signaler l'état du système à l'usager et d'afficher des motifs de lumières variés.</p>
+
+
 
 		  	</article>
 		  </section>

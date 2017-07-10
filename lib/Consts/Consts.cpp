@@ -1,6 +1,6 @@
 #include "Arduino.h"
 
-String enumToString(int sys){
+String enumToString(uint8_t sys){
   switch(sys){
     case 0:
       return "STANDBY";

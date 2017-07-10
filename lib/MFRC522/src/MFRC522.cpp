@@ -1587,68 +1587,34 @@ void MFRC522::PICC_DumpMifareUltralightToSerial() {
 	}
 } // End PICC_DumpMifareUltralightToSerial()
 
-void MFRC522::PICC_CopyMifareUltralightData(byte startPage, byte* dataBlock) {
+// Copies pages startPage to endPage into dataBlock. Copies in chuncks of 16 bytes (4 pages)
+void MFRC522::PICC_CopyMifareUltralightData(byte startPage,byte endPage, byte* dataBlock) {
 	MFRC522::StatusCode status;
 	byte byteCount;
 	byte buffer[18];
 
-	if(startPage > 12){
-			Serial.print(F("Must start reading at maximum page 12"));
-	}
-	// Try the mpages of the original Ultralight. Ultralight C has more pages.
 
-	// Read pages
-	byteCount = sizeof(buffer);
 	Serial.println(F("PICC_CopyMifareUltralightData: "));
-	status = MIFARE_Read(startPage, buffer, &byteCount);
-	if (status != STATUS_OK) {
-		Serial.print(F("MIFARE_Read() failed: "));
-		Serial.println(GetStatusCodeName(status));
-		return;
-	}
-	for(int i=0; i<byteCount; i++){
-		dataBlock[i] = buffer[i];
+	byteCount = sizeof(buffer);
+	byte loopcount = 0;
+	for(int i=startPage; i < endPage; i+=4){
+		status = MIFARE_Read(i, buffer, &byteCount);
+			if (status != STATUS_OK) {
+			Serial.print(F("MIFARE_Read() failed: "));
+			Serial.println(GetStatusCodeName(status));
+			return;
+		}
+		for(int j=0; j<16; j++){
+			if(i<endPage){
+				dataBlock[ (loopcount*16) +j ] = buffer[j];
+			}
+		}
+		loopcount++;
+
 	}
 
 } // End PICC_CopyMifareUltralightData()
 
-bool MFRC522::PICC_MatchUIDDataBlock(byte startPage, Uid *uid) {
-	MFRC522::StatusCode status;
-	byte byteCount;
-	byte buffer[18];
-
-	// Read pages
-	byteCount = sizeof(buffer);
-
-	Serial.println(F("PICC_MatchUIDDataBlock: "));
-	status = MIFARE_Read(startPage, buffer, &byteCount);
-	if (status != STATUS_OK) {
-		Serial.print(F("MIFARE_Read() failed: "));
-		Serial.println(GetStatusCodeName(status));
-		return;
-	}
-
-	Serial.println(F("Read UID: "));
-	for(int i=0; i< uid->size; i++){
-		Serial.print(String(buffer[i],HEX)+" ");
-	}
-	Serial.println();
-	int count=0;
-	for(int i=0; i< uid->size; i++){
-		if(buffer[i]==uid->uidByte[i]){
-			count++;
-		}
-	}
-	if(count == uid->size){
-		Serial.println(F("UID matches UID written on card"));
-		return true;
-	}
-	else{
-		Serial.println(F("UID does NOT match UID written on card"));
-	}
-
-	return false;
-} // End PICC_MatchUIDDataBlock()
 
 /**
  * Calculates the bit pattern needed for the specified access bits. In the [C1 C2 C3] tuples C1 is MSB (=4) and C3 is LSB (=1).

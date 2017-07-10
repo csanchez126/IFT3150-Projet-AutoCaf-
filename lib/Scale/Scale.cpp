@@ -5,7 +5,7 @@
 
 extern STATUS sysStatus;
 
-Scale::Scale(int dout, int clk){
+Scale::Scale(uint8_t dout, uint8_t clk){
   hx711 = new HX711(dout, clk);
   calibration_factor = 221;
   weightVarThresh = 0.5;
@@ -40,7 +40,7 @@ void Scale::stabilityCheck(){
         //STABLE WEIGHT!
         waitingForStability = false;
         lastStableWeight = readWeight;
-        Serial.println("New lastStableWeight: "+String(lastStableWeight));
+        // Serial.println("New lastStableWeight: "+String(lastStableWeight));
         //Counter drifting
         // if(lastStableWeight <= 1 && lastStableWeight >= -1){
         //   this -> reset();
@@ -58,8 +58,6 @@ float Scale::getSensorWeight(){
 
 void Scale::updateWeight(){
   //Scale activity
-  //sensorWeight = getSensorWeight();
-  //weightVar = (sensorWeight - readWeight)/LOOP_DELTA; //Delta weight/delta Time
   lastReadWeight = readWeight;
   readWeight = getSensorWeight();
   if(readWeight < 0 && readWeight > -1){ //Remove -0 displaying
@@ -89,7 +87,6 @@ void Scale::init(){
       start = millis();
     }
   }
-  Serial.println("Init done!");
 }
 
 void Scale::reset(){
@@ -103,23 +100,6 @@ float Scale::getLastStableWeight(){
 
 float Scale::getReadWeight(){
   return readWeight;
-}
-
-void Scale::setStandbySensitivity(){
-  weightVarThresh = 0.5;
-  weightDiffThresh = 5;
-  stableTime = 3000;
-}
-
-void Scale::setServingSensitivity(){
-  weightVarThresh = 0.15;
-  weightDiffThresh = 2;
-  stableTime = 4000;
-}
-void Scale::setClearingSensitivity(){
-  weightVarThresh = 2;
-  weightDiffThresh = 50;
-  stableTime = 1500;
 }
 
 void Scale::setCalibrationFactor(float fact){

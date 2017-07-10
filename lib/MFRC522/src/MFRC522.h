@@ -403,8 +403,7 @@ public:
 	void PICC_DumpMifareClassicSectorToSerial(Uid *uid, MIFARE_Key *key, byte sector);
 	void PICC_DumpMifareUltralightToSerial();
 	void PICC_ReadMifareUltralightToSerial(byte start, byte end);
-	void PICC_CopyMifareUltralightData(byte startPage, byte* dataBlock);
-	bool PICC_MatchUIDDataBlock(byte startPage, Uid *uid);
+	void PICC_CopyMifareUltralightData(byte startPage,byte endPage, byte* dataBlock);
 
 	// Advanced functions for MIFARE
 	void MIFARE_SetAccessBits(byte *accessBitBuffer, byte g0, byte g1, byte g2, byte g3);

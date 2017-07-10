@@ -27,7 +27,7 @@ private:
   float zero;
 
 public:
-  Scale(int DOUT, int CLK);
+  Scale(uint8_t DOUT, uint8_t CLK);
   void  stabilityCheck();
   float getSensorWeight();
   void  updateWeight();
@@ -35,10 +35,6 @@ public:
   float getReadWeight();
 
   void resetDrink();
-
-  void setStandbySensitivity();
-  void setServingSensitivity();
-  void setClearingSensitivity();
 
   void  setCalibrationFactor(float fact);
   float getCalibrationFactor();

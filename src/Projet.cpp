@@ -291,7 +291,8 @@ void userLoop(){
 
             // Check for compatibility
             if (MFRC522::PICC_GetType(nfc.uid.sak) != MFRC522::PICC_TYPE_MIFARE_UL) {
-                Serial.println(F("This sample only works with MIFARE Ultralight C."));
+                Serial.println(F("This sample only works with MIFARE Ultralight."));
+                sysStatus = STANDBY;
                 return;
             }
 
@@ -354,7 +355,8 @@ void userLoop(){
           if(nfc.PICC_IsNewCardPresent() && nfc.PICC_ReadCardSerial()){
             // Check for compatibility
             if (MFRC522::PICC_GetType(nfc.uid.sak) != MFRC522::PICC_TYPE_MIFARE_UL) {
-                Serial.println(F("This sample only works with MIFARE Ultralight C."));
+                Serial.println(F("This sample only works with MIFARE Ultralight."));
+                sysStatus = STANDBY;
                 return;
             }
 

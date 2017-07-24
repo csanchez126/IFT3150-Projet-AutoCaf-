@@ -2,13 +2,13 @@ const anchors = document.querySelectorAll(".nav a");
 const li = document.querySelectorAll("li");
 const sections = document.querySelectorAll("section");
 
-tabAnimation(document.querySelector(".li-presentation"))
+tabAnimation(document.querySelector("#li-presentation"))
 
 console.log("CLICKED");
 function navigation(e){
   //Tab styling
   let name = this.href.split("#")[1];
-  let li = document.querySelector(".li-"+name);
+  let li = document.querySelector("#li-"+name);
   tabAnimation(li)
   console.log(li);
 }
@@ -17,7 +17,6 @@ function tabAnimation(clicked){
     li[i].style.width = "100%";
   }
   clicked.style.width = "115%";
-
 }
 
 
@@ -34,4 +33,32 @@ function offsetAnchor() {
         window.scrollTo(window.scrollX, window.scrollY - 50);
     }
 }
+
 window.addEventListener("hashchange", offsetAnchor);
+
+$(document).ready(function(){
+  var secs = $("section")
+  $(window).scroll(function(){
+    secs.each(function(i){
+      if($(this).next().length){
+        if($(window).scrollTop()+200 > $(this).position().top
+           && $(window).scrollTop()+200 < $(this).next().position().top){
+          
+          $(".nav li").each(function(i){
+            $(this).css("width", "100%");
+          });
+          
+          var thisLiId = "#li-"+$(this).attr('id');
+          $(thisLiId).css("width", "115%");
+        } 
+      }else if($(window).scrollTop()+200 > $(this).position().top){
+
+        $(".nav li").each(function(i){
+            $(this).css("width", "100%");
+          });
+        $("#li-ressources").css("width", "115%");
+        
+      }
+    });
+  });
+});

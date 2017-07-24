@@ -158,8 +158,10 @@
 				<p>La partie cryptographie est entamée. J'utilise la librairie <a href="https://rweather.github.io/arduinolibs/classChaCha.html">ChaCha pour Arduino</a> qui est une variante de la crypto <a href="http://cr.yp.to/snuffle/salsafamily-20071225.pdf">Salsa20</a>. Cet algo très simple mais robuste prend une clé de cyptage, un vecteur d'initialisation et un "block counter" qui est un tableau servant à gerer les blocs de données générées par l'algo. L'algorithme utilise ces données pour générer des matrices de bytes sur lequelles il applique des additions, des rotations de bits et des ou exclusifs entre les données du tableaux pour mélanger les données. On peut répéter ces opérations un nombre arbitraire de fois pour augmenter sa fiabilité.</p>
 
 				<p>Le projet est à un stade ou sa fonction principale est implémentée de manière assez fiable. Je dois essayer de le "briser" pour trouver des failles ou des problèmes qui m'auraient échappé. Je dois aussi implémenter un mode de recharge de carte et trouver une manière de rendre la calibration de la balance accessible. De plus, suite à une discussion avec Sébastien, nous allons probablement opter pour un des LEDs RGB configurées en anneau (comme <a href="https://www.adafruit.com/product/2561">ceux-ci</a> ou bien <a href="https://www.adafruit.com/product/2874">ceux-là</a>) que nous placerions dans la balance. Cette option permettrait de mieux signaler l'état du système à l'usager et d'afficher des motifs de lumières variés.</p>
-
-
+				
+				<h2>Semaines 10 et 11 - 10 juin au 21 juillet </h2>
+				
+				<p>Les deux dernières semaines j'ai crée un programme permettant la recharge de cartes usagers. J'ai une carte "administrateur" contenant des données pour autoriser un ajout de 10$ sur une carte et lorsqu'on la lit, le système attend la lecture d'une carte usager pour y ajouter les fonds. Pour le moment je n'ai qu'une seule carte NFC supplémentaire, pour tester le système de recharge, mais il semble prometteur. Lorsque je m'en procurerai d'autre je pourrai continuer à effectuer des test. </p>
 
 		  	</article>
 		  </section>

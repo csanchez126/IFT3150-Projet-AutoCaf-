@@ -20,16 +20,16 @@ module LEDpiece(tol=[0.6,0.6,0.5]) {
 module LEDsupport(tol=[0.6,0.6,0.5]) {
     difference() {
         translate([0,0,2]) cube([70,30,4],center=true);
-        led(extra=[0,-4,10]+tol,shift=[0,0,0]);
-        led(extra=[-40,0,10]+tol,shift=[-40/2,0,0]);
+        led(extra=[-2,-4,10]+tol,shift=[1,0,0]);
+*        led(extra=[-40,0,10]+tol,shift=[-40/2,0,0]); // special!!
         led(extra=[-40,0,10]+tol,shift=[40/2,0,0]);
         led(extra=[0,0,1]+tol,shift=[0,0,4-LEDhauteur+1/2]);
     }
 }
 
-*translate([0,-40,0]) {
+translate([0,-40,0]) {
     LEDsupport();
-    *%LEDpiece();
+    *LEDpiece();
 }
 
 
@@ -98,7 +98,7 @@ module poidsA(helice=true,extraTrou=0) {
         union() {
             if( helice ) {
                 triple() {
-                    translate([40,0,-1]) cylinder(d=15,h=1);
+                    translate([38,0,-1]) cylinder(d=15,h=1);
                     translate([0,0,-POIDSespace]) cylinder(d=10,h=POIDSespace);
                 }
             }
@@ -122,12 +122,10 @@ module poidsBarre() {
     cube([80,12.75,12.75],center=true);
 }
 
-poidsBarre();
-
-
+*poidsBarre();
 *%cylinder(d=120,h=4);
 poidsA();
-poidsB();
+*poidsB();
 
 
 module deplace() {

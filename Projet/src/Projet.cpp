@@ -10,6 +10,7 @@
 #include <ChaCha.h>
 #include <string.h>
 #include <avr/pgmspace.h>
+#include <Adafruit_NeoPixel.h>
 
 // LCD SETUP
 Adafruit_SSD1306 display(OLED_RESET);
@@ -17,8 +18,13 @@ Adafruit_SSD1306 display(OLED_RESET);
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
+// Neopixel setup
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(8, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
+int lightPos = 0; // Light index variable
+float lastLightCycle = 0; // Light timing variable
+
 // Hardware variables
-uint8_t   displayMode = 1;               // What info should the LCD show
+uint8_t   displayMode = 2;               // What info should the LCD show
 uint8_t   potValue = 0;                  // variable to store the value coming from the sensor
 uint8_t   buttonState;                   // For manual taring
 uint8_t   lastButtonState = LOW;         // the previous reading from the input pin
@@ -34,13 +40,9 @@ byte dataBlock[] = {            // Data structure to read/write from/to card
   0x00, 0x00, 0x00, 0x00,       // dataBlock[1] = cents
   0x00, 0x00, 0x00, 0x00,       // dataBlock[2] = 0 if positive balance, 1 if negative
   0x00, 0x00, 0x00, 0x00,       // dataBlock[4-10] = UID
-  0x00, 0x00, 0x00, 0x00,       // dataBlock[11-40] = random hex value
-  0x00, 0x00, 0x00, 0x00,       // dataBlock[41-48] = CAFE CAFE CAFE CAFE CAFE
+  0x00, 0x00, 0x00, 0x00,       // dataBlock[11-23] = random hex value
+  0x00, 0x00, 0x00, 0x00,       // dataBlock[24-31] = CAFE CAFE CAFE CAFE CAFE
   0x00, 0x00, 0x00, 0x00,       // Occupies all user available memory on card
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
 };
 
@@ -58,28 +60,55 @@ ChaCha chacha;
 int   oldBalance = 0;
 float newBalance = 0;
 float price = 0;
-uint8_t firstPage = 4; // First page from which we read/write the 16 dataBlock bytes
+uint8_t firstPage = 8; // First page from which we read/write the 16 dataBlock bytes
 uint8_t lastPage = 15; // First page from which we read/write the 16 dataBlock bytes
 
 STATUS sysStatus;
 
 //==============================LCD FUNCTIONS===================================
 void setDisplayInfo(uint8_t displayMode){
-    if(displayMode == 0){
-      display.setTextColor(BLACK, WHITE); // 'inverted' text
+    if(displayMode == 0){ // Calib mode
+      display.setTextColor(BLACK, WHITE);
       display.println("Calib:");
       display.println(String(scale.getCalibrationFactor(),0));
       display.println("Pot: "+ String(analogRead(POT_PIN)));
     }
-    else if(displayMode == 1){
-      display.setTextColor(BLACK, WHITE); // 'inverted' text
+    else if(displayMode == 1){ //Debug mode
+      display.setTextColor(BLACK, WHITE);
       display.print("lstStblWght: ");
       display.println((int)scale.getLastStableWeight());
       display.print("sysStatus: ");
       display.println(enumToString(sysStatus));
-      display.println("oldBalance: "+String((((float) oldBalance)/100)));
-      display.println("newBalance: "+String((newBalance/100)));
+      display.println("oldBalance: "+String((((float) oldBalance)/100))+"$");
+      display.println("newBalance: "+String((newBalance/100))+"$");
       display.println("Paid: "+String(price));
+    }
+    else if(displayMode == 2){ // User mode
+      display.setTextColor(WHITE);
+      display.setTextSize(1);
+      String status = enumToString(sysStatus);
+      if( status == "STANDBY" ){
+        display.println("");
+        display.print("Veuillez deposer une tasse a puce");
+      }
+      else if( status == "SERVING" ){
+        display.println("");
+        display.print("Prix: ");
+        display.println(String(scale.getReadWeight()/250*PRICE_PER_CUP/100)+"$");
+        display.print("Solde: ");
+        display.println(String((float) oldBalance/100));
+      }
+      else if( status == "DONE" ){
+        display.println("");
+        display.print("Prix: ");
+        display.println(String((float) oldBalance/100-(float) newBalance/100)+"$");
+        display.print("Nouveau solde: ");
+        display.println(String((((float) newBalance)/100))+"$");
+        display.println("");
+        display.println("Veuillez retirer la");
+        display.println("tasse!");
+      }
+
     }
 }
 
@@ -93,7 +122,8 @@ void setDisplayWeight(float weight){
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0,0);
-  display.println(String(weight,0)+"g");
+  display.print("Vol:");
+  display.println(String(weight,0)+"ml");
 }
 
 //==============================NFC/DATABLOCK FUNCTIONS=========================
@@ -111,7 +141,7 @@ void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
   cash *= cash<0 ? -1 : 1;
   int dollars = cash/100;
   int cents   = cash % 100;
-  Serial.println("Dollars: "+String(dollars)+" Cents: "+String(cents));
+  Serial.println("Dollars:"+String(dollars)+" Cents:"+String(cents));
   dataBlock[0] = dollars;
   dataBlock[1] = cents;
   dataBlock[2] = sign;
@@ -121,10 +151,10 @@ void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
 
   // Fill with random values to add randomness to encryption
   srand(millis());
-  for(int i=11; i < 40;i++){
+  for(int i=11; i < 24;i++){
     dataBlock[i] = rand() % 256;
   }
-  for(int i=40; i < 48 ; i++){
+  for(int i=24; i < 32 ; i++){
     if(i%2 == 0){
       dataBlock[i] = 0xCA;
     }
@@ -170,6 +200,95 @@ void cipherInit(ChaCha *cipher){
         Serial.println("Error setCounter");
         return false;
     }
+}
+
+//==============================NEOPIXEL FUNCTIONS=========================
+void clearLights(){
+  for(byte i=0; i<8; i+=1){
+    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+  }
+}
+
+void initLights(){
+  clearLights();
+  for(byte i=0; i<8; i+=1){
+    pixels.setPixelColor(i, pixels.Color(255, 0, 0));
+  }
+  pixels.show();
+}
+
+void standbyLights(){
+  clearLights();
+  for(byte i=0; i<8; i+=1){
+    pixels.setPixelColor(i, pixels.Color(0, 0, 255));
+  }
+  pixels.show();
+}
+
+void stabilityLights(){
+  if(lightPos>255){ // Up-down
+    for(byte i=0; i< 8 ;i+=1){
+      pixels.setPixelColor(i, pixels.Color(255-(lightPos%255), 0, 255-(lightPos%255)));
+    }
+
+  }else{ // Down-up
+    for(byte i=0; i< 8 ;i+=1){
+      pixels.setPixelColor(i, pixels.Color(lightPos, 0, lightPos));
+    }
+  }
+  lightPos += 40;
+  lightPos = lightPos >= 508 ? 1:lightPos;
+  lastLightCycle = millis();
+  pixels.show();
+}
+
+void waitForServeLights(){
+  if(lightPos>255){ // Up-down
+    for(byte i=0; i< 8 ;i+=1){
+      pixels.setPixelColor(i, pixels.Color(0, 255-(lightPos%255), 0));
+    }
+
+  }else{ // Down-up
+    for(byte i=0; i< 8 ;i+=1){
+      pixels.setPixelColor(i, pixels.Color(0, lightPos, 0));
+    }
+  }
+  lightPos += 40;
+  lightPos = lightPos >= 508 ? 1:lightPos;
+  lastLightCycle = millis();
+  pixels.show();
+}
+
+void servingLights(){
+  clearLights();
+  if(lightPos>8){ // Right to left
+    pixels.setPixelColor(7-(lightPos%7), pixels.Color(255, 255, 0));
+  }else{ // Left to right
+    pixels.setPixelColor(lightPos, pixels.Color(255, 255, 0));
+  }
+  lightPos++;
+  lightPos = lightPos == 14 ? 0:lightPos;
+  lastLightCycle = millis();
+  pixels.show();
+}
+void doneLights(){
+  lightPos = lightPos > 1? 0:lightPos;
+  if(millis() - lastLightCycle > 200){
+    if(lightPos == 1){
+      for(byte i=0; i< 8 ;i+=1){
+        pixels.setPixelColor(i, pixels.Color(0, 255, 0));
+      }
+      lightPos = 0;
+    }
+    else if(lightPos == 0){
+      for(byte i=0; i< 8 ;i+=1){
+        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+      }
+      lightPos = 1;
+    }
+    pixels.show();
+    lastLightCycle = millis();
+  }
 }
 
 //==============================MISC/HARDWARE FUNCTIONS=========================
@@ -248,17 +367,13 @@ void serialCommands(){
       Serial.println("Display now showing transaction data");
       displayMode = 1;
     }
+    else if(temp.substring(0,1) == "2"){
+      Serial.println("Display now showing user mode");
+      displayMode = 2;
+    }
   }
 }
 
-// Flash light x times, NOT OPTIMAL, NOT FINAL
-void flash(int del, int led, int times){
-  for(int i=0; i < times ; i++){
-    digitalWrite(led,HIGH);
-    delay(del);
-    digitalWrite(led,LOW);
-  }
-}
 
 //==============================================================================
 // Main usage loop
@@ -266,24 +381,29 @@ void userLoop(){
   switch(sysStatus){
 
     case STANDBY:{
-        if(scale.getLastStableWeight() < -5 && scale.getReadWeight() < -5){
-          scale.reset(); //Counter sensor drift
+        if(scale.isDrifting()){
+          initLights();
+          scale.reset(); //Counter sensor drift and taring fluctuation
         }
         //Stabilized with weight greater than 10 grams
         if(scale.isStable() && (int) scale.getLastStableWeight() > 10){
           scale.setContainerWeight(scale.getLastStableWeight());
           scale.reset();
+          lightPos = 0; // Reset light management variable
           // Cup is on scale, we can check for nfc chip
           sysStatus = AUTHENTICATION;
+        }else if(scale.getReadWeight() > 10 && !scale.isStable()){
+          stabilityLights();
+        }else{
+          standbyLights();
         }
       }
     break;
 
     case AUTHENTICATION:{
-        digitalWrite(RED_LED_PIN, HIGH);
         unsigned long waitStart = millis();
         bool waitForNFC = true;
-
+        Serial.println("AUTHENTICATING!");
         //We wait for a card to be read whithin a 3 sec time window
         // Serial.print(String(waitStart));
         while(millis()-waitStart< 3000){
@@ -295,6 +415,7 @@ void userLoop(){
                 sysStatus = STANDBY;
                 return;
             }
+            Serial.println("READ A CARD!");
 
             // Read and decrypt data from card into dataBlock;
             nfc.PICC_CopyMifareUltralightData(firstPage, lastPage, dataBlock);
@@ -310,7 +431,6 @@ void userLoop(){
             }
             else{
               Serial.println("Error, UID does not match UID in chip");
-              flash(100, RED_LED_PIN, 15);
               sysStatus = STANDBY;
             }
             break;
@@ -326,7 +446,6 @@ void userLoop(){
           sysStatus = SERVING;
         }
         else{ // Card not read, return to standby...for now
-          flash(100, RED_LED_PIN, 15);
           sysStatus = STANDBY;
         }
       }
@@ -334,6 +453,7 @@ void userLoop(){
 
     case SERVING:{
         if(scale.getReadWeight() > 10){
+          servingLights();
           price = (scale.getReadWeight()/250*PRICE_PER_CUP)/100;
           if(scale.isStable() && scale.getContainerWeight() != scale.getLastStableWeight()){
             scale.setDrinkWeight(scale.getLastStableWeight());
@@ -341,6 +461,8 @@ void userLoop(){
             // Cup is on scale, we can check for nfc chip
             sysStatus = PAYMENT;
           }
+        }else{
+          waitForServeLights();
         }
       }
     break;
@@ -366,7 +488,6 @@ void userLoop(){
             }
             else{
               Serial.println("Error, UID does not match UID in chip");
-              flash(100, RED_LED_PIN, 15);
               sysStatus = STANDBY;
             }
             break;
@@ -390,21 +511,22 @@ void userLoop(){
           // Halt PICC
           nfc.PICC_HaltA();
           digitalWrite(RED_LED_PIN, LOW);
-          sysStatus = CLEARING;
+
+          lastLightCycle = 0;
+          sysStatus = DONE;
         }
 
         else{ // Card not read, return to standby...for now
-          flash(100, RED_LED_PIN, 15);
           sysStatus = STANDBY;
         }
       }
     break;
 
-    case CLEARING:{
-        waitBlink(0, 1000, GREEN_LED_PIN);
+    case DONE:{
+        doneLights();
         if(scale.isStable() && (int) scale.getLastStableWeight() < 0 &&
            !nfc.PICC_IsNewCardPresent()){
-          // Serial.println("CUSTOMER LEFT");
+          // Serial.println("CUSTOMER LEFT
           oldBalance = 0;
           newBalance = 0;
           price = 0;
@@ -422,18 +544,24 @@ void setup()   {
   pinMode(BUTTON_PIN, INPUT);
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(RED_LED_PIN, OUTPUT);
-  digitalWrite(GREEN_LED_PIN, HIGH);
   Serial.begin(9600);
   Serial.println("Starting! Enter 'help' to see command list");
 
+  // Neopixel setup
+  pixels.begin();
+  pixels.show(); // Initialize all pixels to 'off'
+  initLights();
+  lightPos = 0;
   //LCD Startup
   display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3D (for the 128x64)
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0,0);
-  display.println("Initializing...");
-
+  display.println("Initialisation...");
+  display.println("");
+  display.println("Ne pas toucher SVP!");
+  display.display();
   // NFC Startup
   SPI.begin();        // Init SPI bus
   nfc.PCD_Init(); // Init MFRC522 card

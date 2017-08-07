@@ -40,11 +40,6 @@ void Scale::stabilityCheck(){
         //STABLE WEIGHT!
         waitingForStability = false;
         lastStableWeight = readWeight;
-        // Serial.println("New lastStableWeight: "+String(lastStableWeight));
-        //Counter drifting
-        // if(lastStableWeight <= 1 && lastStableWeight >= -1){
-        //   this -> reset();
-        // }
       }
     }else{
       start = millis();
@@ -131,4 +126,11 @@ void Scale::setDrinkWeight(float weight){
 }
 float Scale::getDrinkWeight(){
   return drinkWeight;
+}
+
+bool Scale::isDrifting(){
+  if(getLastStableWeight() != 0 && getReadWeight() < 0){
+    return true;
+  }
+  return false;
 }

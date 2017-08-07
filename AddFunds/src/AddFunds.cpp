@@ -9,6 +9,7 @@
 #include <ChaCha.h>
 #include <string.h>
 #include <avr/pgmspace.h>
+#include <Adafruit_NeoPixel.h>
 
 // Hardware SETUP
 Adafruit_SSD1306 display(OLED_RESET);
@@ -26,26 +27,18 @@ byte dataBlock[] = {            // Data structure to read/write from/to card
   0x00, 0x00, 0x00, 0x00,       // dataBlock[11-40] = random hex value
   0x00, 0x00, 0x00, 0x00,       // dataBlock[41-48] = CAFE CAFE CAFE CAFE CAFE
   0x00, 0x00, 0x00, 0x00,       // Occupies all user available memory on card
+  0x00, 0x00, 0x00, 0x00
+};
+
+byte fundCardDataBlock[] = {
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
-};
-
-byte fundCardDataBlock[] = {
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00
 };
 
 float fundsToAdd = 0;
@@ -64,7 +57,7 @@ ChaCha chacha;
 int   oldBalance = 0;
 float newBalance = 0;
 float price = 0;
-uint8_t firstPage = 4; // First page from which we read/write the 16 dataBlock bytes
+uint8_t firstPage = 8; // First page from which we read/write the 16 dataBlock bytes
 uint8_t lastPage = 15; // First page from which we read/write the 16 dataBlock bytes
 
 STATUS sysStatus;
@@ -102,10 +95,10 @@ bool isFundCard(byte* dataBlock) {
 }
 
 bool isUserCard(byte* dataBlock) {
-  if(dataBlock[40]==0XCA && dataBlock[41]==0XFE &&
-     dataBlock[42]==0XCA && dataBlock[43]==0XFE &&
-     dataBlock[44]==0XCA && dataBlock[45]==0XFE &&
-     dataBlock[46]==0XCA && dataBlock[47]==0XFE){
+  if(dataBlock[24]==0XCA && dataBlock[25]==0XFE &&
+     dataBlock[26]==0XCA && dataBlock[27]==0XFE &&
+     dataBlock[28]==0XCA && dataBlock[29]==0XFE &&
+     dataBlock[30]==0XCA && dataBlock[31]==0XFE){
        return true;
   }
   return false;
@@ -117,6 +110,7 @@ int dataBlockToCash(byte* dataBlock){
   balance *= dataBlock[2] == 0 ? 1 : -1;
   return balance;
 }
+
 
 // Converts amount in cents to our dataBlock structure
 void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
@@ -134,10 +128,10 @@ void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
 
   // Fill with random values to add randomness to encryption
   srand(millis());
-  for(int i=11; i < 40;i++){
+  for(int i=11; i < 24;i++){
     dataBlock[i] = rand() % 256;
   }
-  for(int i=40; i < 48 ; i++){
+  for(int i=24; i < 32 ; i++){
     if(i%2 == 0){
       dataBlock[i] = 0xCA;
     }
@@ -147,9 +141,10 @@ void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
   }
 }
 
+
 // Write dataBlock one page (4 bytes) at a time
 void writeDatablockToCard(byte* dataBlock, int firstPage){
-  for(int i=0; i<16;i+=4){
+  for(int i=0; i<sizeof(dataBlock);i+=4){
     nfcStatus = (MFRC522::StatusCode) nfc.MIFARE_Ultralight_Write(firstPage+(i/4), dataBlock+i, 4);
     if (nfcStatus != MFRC522::STATUS_OK) {
         Serial.print(F("MIFARE_Write() failed: "));
@@ -173,15 +168,12 @@ void cipherInit(ChaCha *cipher){
     cipher->clear();
     if (!cipher->setKey(key, 16)) {
         Serial.println("Error setKey");
-        return false;
     }
     if (!cipher->setIV(iv, 8)) {
         Serial.println("Error setIV");
-        return false;
     }
     if (!cipher->setCounter(counter, 8)) {
         Serial.println("Error setCounter");
-        return false;
     }
 }
 
@@ -330,6 +322,12 @@ void userLoop(){
       Serial.println("Card dump: ");
       nfc.PICC_DumpToSerial(&(nfc.uid));
 
+      nfc.PICC_CopyMifareUltralightData(firstPage, lastPage, dataBlock);
+      cipherInit(&chacha);
+      chacha.decrypt(dataBlock, dataBlock, sizeof(dataBlock));
+      Serial.println("Now written on card: ");
+      dump_byte_array(dataBlock, sizeof(dataBlock));
+
       // Halt PICC
       nfc.PICC_HaltA();
       clearDataBlock(dataBlock);
@@ -357,6 +355,10 @@ void setup()   {
   digitalWrite(GREEN_LED_PIN, HIGH);
   Serial.begin(9600);
   Serial.println("Starting! Enter 'help' to see command list");
+
+  // Neopixel setup
+  pixels.begin();
+  pixels.show(); // Initialize all pixels to 'off'
 
   //LCD Startup
   display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3D (for the 128x64)

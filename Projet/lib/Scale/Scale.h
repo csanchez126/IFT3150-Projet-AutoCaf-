@@ -50,6 +50,7 @@ public:
   float getContainerWeight();
   void  setDrinkWeight(float weight);
   float getDrinkWeight();
+  bool isDrifting();
 
 };
 

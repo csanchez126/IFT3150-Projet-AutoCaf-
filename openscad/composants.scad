@@ -74,7 +74,7 @@ NFCsupport();
 // attache du dessus
 //
 
-POIDSespace=6; // minimum 6 pour la tete de vis
+POIDSespace=7; // minimum 6 pour la tete de vis
 epaisseur=2;
 barreW=25;extraW=5;
 barreH=13;extraH=5;

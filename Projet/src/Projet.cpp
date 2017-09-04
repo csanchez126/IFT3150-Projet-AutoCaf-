@@ -55,63 +55,26 @@ byte key[] = {
 byte iv[] = {101,109,103,104,105,106,107,108};
 byte counter[] = {109, 110, 111, 112, 113, 114, 115, 116};
 ChaCha chacha;
+uint8_t firstPage = 8;   // First page from which we read/write the 16 dataBlock bytes
+uint8_t lastPage = 15;   // First page from which we read/write the 16 dataBlock bytes
 
 
-int   oldBalance = 0;
-float newBalance = 0;
-float price = 0;
-uint8_t firstPage = 8; // First page from which we read/write the 16 dataBlock bytes
-uint8_t lastPage = 15; // First page from which we read/write the 16 dataBlock bytes
+int oldBalance = 0;
+int newBalance = 0;
+float priceFloat = 0;
+
+String oldBalanceString;
+String newBalanceString;
+String priceString = "0.00"; //Display variables
+
+float drinkWeight = 0;
+float containerWeight = 0;
+
+
 
 STATUS sysStatus;
 
 //==============================LCD FUNCTIONS===================================
-void setDisplayInfo(uint8_t displayMode){
-    if(displayMode == 0){ // Calib mode
-      display.setTextColor(BLACK, WHITE);
-      display.println("Calib:");
-      display.println(String(scale.getCalibrationFactor(),0));
-      display.println("Pot: "+ String(analogRead(POT_PIN)));
-    }
-    else if(displayMode == 1){ //Debug mode
-      display.setTextColor(BLACK, WHITE);
-      display.print("lstStblWght: ");
-      display.println((int)scale.getLastStableWeight());
-      display.print("sysStatus: ");
-      display.println(enumToString(sysStatus));
-      display.println("oldBalance: "+String((((float) oldBalance)/100))+"$");
-      display.println("newBalance: "+String((newBalance/100))+"$");
-      display.println("Paid: "+String(price));
-    }
-    else if(displayMode == 2){ // User mode
-      display.setTextColor(WHITE);
-      display.setTextSize(1);
-      String status = enumToString(sysStatus);
-      if( status == "STANDBY" ){
-        display.println("");
-        display.print("Veuillez deposer une tasse a puce");
-      }
-      else if( status == "SERVING" ){
-        display.println("");
-        display.print("Prix: ");
-        display.println(String(scale.getReadWeight()/250*PRICE_PER_CUP/100)+"$");
-        display.print("Solde: ");
-        display.println(String((float) oldBalance/100));
-      }
-      else if( status == "DONE" ){
-        display.println("");
-        display.print("Prix: ");
-        display.println(String((float) oldBalance/100-(float) newBalance/100)+"$");
-        display.print("Nouveau solde: ");
-        display.println(String((((float) newBalance)/100))+"$");
-        display.println("");
-        display.println("Veuillez retirer la");
-        display.println("tasse!");
-      }
-
-    }
-}
-
 void activateDisplay(int del){
   display.display();
   delay(del);
@@ -126,6 +89,90 @@ void setDisplayWeight(float weight){
   display.println(String(weight,0)+"ml");
 }
 
+void invalidCard(String str){
+  Serial.println(str);
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.println("Carte invalide!");
+  display.display();
+  delay(5000);
+}
+
+float weightToCashFloat(){
+  float numCups = scale.getReadWeight()/250;
+  return numCups*PRICE_PER_CUP;
+}
+
+String weightToCashString(){
+  float numCups = scale.getReadWeight()/250;
+  return String((numCups*PRICE_PER_CUP)/100);
+}
+
+String cashToString(float cents){
+  return String(cents/100);
+}
+
+void setDisplayInfo(uint8_t displayMode){
+    if(displayMode == 0){ // Calib mode
+      display.setTextColor(BLACK, WHITE);
+      display.println("Calib:");
+      display.println(String(scale.getCalibrationFactor(),0));
+      display.println("Pot: "+ String(analogRead(POT_PIN)));
+    }
+    else if(displayMode == 1){ //Debug mode
+      display.setTextColor(BLACK, WHITE);
+      display.print("lstStblWght: ");
+      display.println((int)scale.getLastStableWeight());
+      display.print("sysStatus: ");
+      display.println(enumToString(sysStatus));
+      display.println("oldBalance: "+cashToString(oldBalance)+"$");
+      display.println("newBalance: "+cashToString(newBalance)+"$");
+      display.println("Paid: "+priceString);
+    }
+    else if(displayMode == 2){ // User mode
+      display.setTextColor(WHITE);
+      display.setTextSize(1);
+      String status = enumToString(sysStatus);
+      if( status == "STANDBY" ){
+        if(scale.getReadWeight() > 10 && !scale.isStable()){
+          display.println("");
+          display.println("Stabilisation");
+          display.println("en cours!");
+        }
+        else{
+          display.println("");
+          display.print("Veuillez deposer une tasse NFC");
+        }
+      }
+      if( status == "AUTHENTICATION" ){
+        display.println("");
+        display.print("Lecture de la carte...");
+      }
+      else if( status == "SERVING" ){
+        if(scale.getReadWeight() >= 0){
+          display.println("");
+          display.print("Prix: ");
+          display.println(priceString+"$");
+          display.print("Solde: ");
+          display.println(oldBalanceString+"$");
+        }
+        else if(scale.getReadWeight() <= -5){
+          display.println("");
+          display.print("Veuillez redeposer votre tasse!");
+        }
+      }
+      else if( status == "DONE" ){
+        display.println("");
+        display.print("Prix final: ");
+        display.println(priceString+"$");
+        display.print("Nouveau solde: ");
+        display.println(newBalanceString+"$");
+        display.println("");
+        display.println("Veuillez retirer la");
+        display.println("tasse!");
+      }
+    }
+}
 //==============================NFC/DATABLOCK FUNCTIONS=========================
 
 // Returns in cents the balance on card
@@ -149,7 +196,7 @@ void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
     dataBlock[i] = (uid->uidByte)[i-4];
   }
 
-  // Fill with random values to add randomness to encryption
+  // Fill with random values to add "randomness" to encryption
   srand(millis());
   for(int i=11; i < 24;i++){
     dataBlock[i] = rand() % 256;
@@ -166,7 +213,7 @@ void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
 
 // Write dataBlock one page (4 bytes) at a time
 void writeDatablockToCard(byte* dataBlock, int firstPage){
-  for(int i=0; i<16;i+=4){
+  for(int i=0; i<sizeof(dataBlock); i+=4){
     nfcStatus = (MFRC522::StatusCode) nfc.MIFARE_Ultralight_Write(firstPage+(i/4), dataBlock+i, 4);
     if (nfcStatus != MFRC522::STATUS_OK) {
         Serial.print(F("MIFARE_Write() failed: "));
@@ -183,6 +230,17 @@ bool matchDatablockUid(byte* dataBlock, MFRC522::Uid * uid){
     }
   }
   return true;
+}
+
+// Validate card format
+bool isUserCard(byte* dataBlock) {
+  if(dataBlock[24]==0XCA && dataBlock[25]==0XFE &&
+     dataBlock[26]==0XCA && dataBlock[27]==0XFE &&
+     dataBlock[28]==0XCA && dataBlock[29]==0XFE &&
+     dataBlock[30]==0XCA && dataBlock[31]==0XFE){
+       return true;
+  }
+  return false;
 }
 
 // Initalizint ChaCha, must be done before every encrypt/decrypt
@@ -203,34 +261,45 @@ void cipherInit(ChaCha *cipher){
 }
 
 //==============================NEOPIXEL FUNCTIONS=========================
+// Turn off lights
 void clearLights(){
   for(byte i=0; i<8; i+=1){
     pixels.setPixelColor(i, pixels.Color(0, 0, 0));
   }
 }
 
+// All red
 void initLights(){
   clearLights();
   for(byte i=0; i<8; i+=1){
     pixels.setPixelColor(i, pixels.Color(255, 0, 0));
   }
   pixels.show();
+  return;
 }
 
+// All red
+void errorLights(){
+  initLights();
+  return;
+}
+
+// All blue
 void standbyLights(){
   clearLights();
   for(byte i=0; i<8; i+=1){
     pixels.setPixelColor(i, pixels.Color(0, 0, 255));
   }
   pixels.show();
+  return;
 }
 
+// Purple fade-in-out
 void stabilityLights(){
   if(lightPos>255){ // Up-down
     for(byte i=0; i< 8 ;i+=1){
       pixels.setPixelColor(i, pixels.Color(255-(lightPos%255), 0, 255-(lightPos%255)));
     }
-
   }else{ // Down-up
     for(byte i=0; i< 8 ;i+=1){
       pixels.setPixelColor(i, pixels.Color(lightPos, 0, lightPos));
@@ -240,14 +309,15 @@ void stabilityLights(){
   lightPos = lightPos >= 508 ? 1:lightPos;
   lastLightCycle = millis();
   pixels.show();
+  return;
 }
 
+// Green fade-in-out
 void waitForServeLights(){
   if(lightPos>255){ // Up-down
     for(byte i=0; i< 8 ;i+=1){
       pixels.setPixelColor(i, pixels.Color(0, 255-(lightPos%255), 0));
     }
-
   }else{ // Down-up
     for(byte i=0; i< 8 ;i+=1){
       pixels.setPixelColor(i, pixels.Color(0, lightPos, 0));
@@ -257,8 +327,10 @@ void waitForServeLights(){
   lightPos = lightPos >= 508 ? 1:lightPos;
   lastLightCycle = millis();
   pixels.show();
+  return;
 }
 
+// Yellow left-right
 void servingLights(){
   clearLights();
   if(lightPos>8){ // Right to left
@@ -270,7 +342,10 @@ void servingLights(){
   lightPos = lightPos == 14 ? 0:lightPos;
   lastLightCycle = millis();
   pixels.show();
+  return;
 }
+
+// Green flash
 void doneLights(){
   lightPos = lightPos > 1? 0:lightPos;
   if(millis() - lastLightCycle > 200){
@@ -289,6 +364,7 @@ void doneLights(){
     pixels.show();
     lastLightCycle = millis();
   }
+  return;
 }
 
 //==============================MISC/HARDWARE FUNCTIONS=========================
@@ -302,6 +378,7 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
           Serial.println();
         }
     }
+    return;
 }
 
 // Set calibration factor
@@ -324,21 +401,7 @@ void buttonReset(){
     }
   }
   lastButtonState = reading;
-}
-
-// Blink led if weight between min and max
-void waitBlink(uint8_t min, uint8_t max, uint8_t led){
-  float instance = millis();
-  bool toggle = false;
-  while(scale.getSensorWeight() <= max && scale.getSensorWeight() >= min){
-    if(millis()-instance>100){
-      instance = millis();
-      toggle = !toggle;
-      digitalWrite(led, toggle);
-      instance = millis();
-    }
-  }
-  digitalWrite(led, LOW);
+  return;
 }
 
 // For debugging purposes
@@ -349,7 +412,8 @@ void serialCommands(){
     if(temp.substring(0,4) == "help"){
       Serial.println("cm to toggle calibration mode");
       Serial.println("0 to show calibration data on display");
-      Serial.println("1 to show transaction data");
+      Serial.println("1 to show debug data");
+      Serial.println("2 to show user mode");
     }
     else if(temp.substring(0,2) == "cm"){
       if(temp.substring(3) == "true"){
@@ -364,7 +428,7 @@ void serialCommands(){
       displayMode = 0;
     }
     else if(temp.substring(0,1) == "1"){
-      Serial.println("Display now showing transaction data");
+      Serial.println("Display now showing debug data");
       displayMode = 1;
     }
     else if(temp.substring(0,1) == "2"){
@@ -372,29 +436,34 @@ void serialCommands(){
       displayMode = 2;
     }
   }
+  return;
 }
 
 
 //==============================================================================
 // Main usage loop
 void userLoop(){
+
   switch(sysStatus){
 
     case STANDBY:{
+
+        //Counter sensor drift and taring fluctuation
         if(scale.isDrifting()){
           initLights();
-          scale.reset(); //Counter sensor drift and taring fluctuation
+          scale.reset();
         }
         //Stabilized with weight greater than 10 grams
         if(scale.isStable() && (int) scale.getLastStableWeight() > 10){
-          scale.setContainerWeight(scale.getLastStableWeight());
+          containerWeight= scale.getLastStableWeight();
           scale.reset();
           lightPos = 0; // Reset light management variable
-          // Cup is on scale, we can check for nfc chip
-          sysStatus = AUTHENTICATION;
+          sysStatus = AUTHENTICATION;// Cup is on scale, we can check for nfc chip
         }else if(scale.getReadWeight() > 10 && !scale.isStable()){
+          // Currently stabilizing
           stabilityLights();
         }else{
+          // Nothing to stabilize
           standbyLights();
         }
       }
@@ -407,8 +476,8 @@ void userLoop(){
         //We wait for a card to be read whithin a 3 sec time window
         // Serial.print(String(waitStart));
         while(millis()-waitStart< 3000){
+          stabilityLights();
           if(nfc.PICC_IsNewCardPresent() && nfc.PICC_ReadCardSerial()){
-
             // Check for compatibility
             if (MFRC522::PICC_GetType(nfc.uid.sak) != MFRC522::PICC_TYPE_MIFARE_UL) {
                 Serial.println(F("This sample only works with MIFARE Ultralight."));
@@ -440,12 +509,18 @@ void userLoop(){
         // Card read, go ahead and do stuff
         if(!waitForNFC){
           // Previous balance read on card-coffee bought
-          oldBalance = (float) dataBlockToCash(dataBlock);
+          oldBalance = dataBlockToCash(dataBlock);
+          oldBalanceString = cashToString(oldBalance);
           waitForNFC = true;
-          digitalWrite(RED_LED_PIN, LOW);
           sysStatus = SERVING;
         }
         else{ // Card not read, return to standby...for now
+          errorLights();
+          display.clearDisplay();
+          display.setCursor(0,0);
+          display.println("Aucune carte lue!");
+          display.display();
+          delay(3500);
           sysStatus = STANDBY;
         }
       }
@@ -454,21 +529,26 @@ void userLoop(){
     case SERVING:{
         if(scale.getReadWeight() > 10){
           servingLights();
-          price = (scale.getReadWeight()/250*PRICE_PER_CUP)/100;
-          if(scale.isStable() && scale.getContainerWeight() != scale.getLastStableWeight()){
-            scale.setDrinkWeight(scale.getLastStableWeight());
+
+          priceFloat = weightToCashFloat();
+          priceString = cashToString(priceFloat);
+
+          if(scale.isStable() && containerWeight != scale.getLastStableWeight()){
+            drinkWeight = scale.getLastStableWeight();
 
             // Cup is on scale, we can check for nfc chip
             sysStatus = PAYMENT;
           }
-        }else{
+        }else if(scale.getReadWeight() <= -5){
+          errorLights();
+        }
+        else{
           waitForServeLights();
         }
       }
     break;
 
     case PAYMENT:{
-        digitalWrite(RED_LED_PIN, HIGH);
         unsigned long waitStart = millis();
         bool waitForNFC = true;
         // Serial.println("PAYMENT MODE "+String(waitStart));
@@ -495,9 +575,10 @@ void userLoop(){
         }
         // Card read, do stuff
         if(!waitForNFC){
-
-          newBalance = (oldBalance - scale.getDrinkWeight()/250*PRICE_PER_CUP);
-          price = (scale.getDrinkWeight()/250*PRICE_PER_CUP)/100;
+          int priceInt = drinkWeight/250*PRICE_PER_CUP;
+          newBalance = (oldBalance - priceInt);
+          priceFloat = (float) priceInt/100; // Adjusting for division precision loss
+          Serial.println("int price "+String(priceInt) + " vs price " + String(priceFloat));
           // Prepare dataBlock to write to chip
           cashToDataBlock(dataBlock, newBalance, &nfc.uid);
 
@@ -510,7 +591,9 @@ void userLoop(){
 
           // Halt PICC
           nfc.PICC_HaltA();
-          digitalWrite(RED_LED_PIN, LOW);
+
+          newBalanceString = cashToString(newBalance);
+          priceString = cashToString(priceInt);
 
           lastLightCycle = 0;
           sysStatus = DONE;
@@ -526,12 +609,12 @@ void userLoop(){
         doneLights();
         if(scale.isStable() && (int) scale.getLastStableWeight() < 0 &&
            !nfc.PICC_IsNewCardPresent()){
-          // Serial.println("CUSTOMER LEFT
           oldBalance = 0;
           newBalance = 0;
-          price = 0;
-          scale.resetDrink();
-          digitalWrite(GREEN_LED_PIN, HIGH);
+          priceFloat = 0;
+          priceString = "0.00";
+          containerWeight = 0;
+          drinkWeight = 0;
           scale.reset();
           sysStatus = STANDBY;
         }
@@ -540,18 +623,17 @@ void userLoop(){
   }
 }
 
+// Hardware initialization
 void setup()   {
-  pinMode(BUTTON_PIN, INPUT);
-  pinMode(GREEN_LED_PIN, OUTPUT);
-  pinMode(RED_LED_PIN, OUTPUT);
   Serial.begin(9600);
   Serial.println("Starting! Enter 'help' to see command list");
 
   // Neopixel setup
   pixels.begin();
-  pixels.show(); // Initialize all pixels to 'off'
+  pixels.show();
   initLights();
   lightPos = 0;
+
   //LCD Startup
   display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3D (for the 128x64)
   display.clearDisplay();
@@ -562,6 +644,7 @@ void setup()   {
   display.println("");
   display.println("Ne pas toucher SVP!");
   display.display();
+
   // NFC Startup
   SPI.begin();        // Init SPI bus
   nfc.PCD_Init(); // Init MFRC522 card
@@ -570,6 +653,7 @@ void setup()   {
   sysStatus = STANDBY;
 }
 
+// Main function
 void loop() {
   scale.updateWeight();   //Read scale and update weight related values
   scale.stabilityCheck(); //Checks weight related values and determines stability

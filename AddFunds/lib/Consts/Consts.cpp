@@ -11,7 +11,7 @@ String enumToString(uint8_t sys){
     case 3:
       return "PAYMENT";
     case 4:
-      return "CLEARING";
+      return "DONE";
   }
   return "SYS STATUS ERROR";
 }

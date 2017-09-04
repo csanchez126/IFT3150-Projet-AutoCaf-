@@ -16,8 +16,6 @@ Scale::Scale(uint8_t dout, uint8_t clk){
   isTaring = false;
   endingTransaction = false;
 
-  containerWeight = 0;
-  drinkWeight = 0;
   weightVar = 0;
   lastStableWeight = 0;
   readWeight = 0;
@@ -60,10 +58,6 @@ void Scale::updateWeight(){
   }
 }
 
-void Scale::resetDrink(){
-  containerWeight = 0;
-  drinkWeight = 0;
-}
 
 void Scale::init(){
   hx711->set_scale(calibration_factor);
@@ -113,20 +107,6 @@ bool Scale::isStable(){
   return !waitingForStability;
 }
 
-void Scale::setContainerWeight(float weight){
-  containerWeight = weight;
-  return;
-}
-float Scale::getContainerWeight(){
-  return containerWeight;
-}
-void Scale::setDrinkWeight(float weight){
-  drinkWeight = weight;
-  return;
-}
-float Scale::getDrinkWeight(){
-  return drinkWeight;
-}
 
 bool Scale::isDrifting(){
   if(getLastStableWeight() != 0 && getReadWeight() < 0){

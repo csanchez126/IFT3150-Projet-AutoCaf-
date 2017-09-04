@@ -16,8 +16,6 @@ private:
   bool  isTaring;
   bool  endingTransaction;
 
-  float containerWeight;
-  float drinkWeight;
   float weightVar;
   float lastStableWeight;
   float readWeight;
@@ -34,7 +32,6 @@ public:
   float getLastStableWeight();
   float getReadWeight();
 
-  void resetDrink();
 
   void  setCalibrationFactor(float fact);
   float getCalibrationFactor();
@@ -45,11 +42,6 @@ public:
   void reset();
 
   bool isStable();
-
-  void  setContainerWeight(float weight);
-  float getContainerWeight();
-  void  setDrinkWeight(float weight);
-  float getDrinkWeight();
   bool isDrifting();
 
 };

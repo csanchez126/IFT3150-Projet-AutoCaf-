@@ -1,0 +1,414 @@
+/**
+ * ----------------------------------------------------------------------------
+ * This is a MFRC522 library example; see https://github.com/miguelbalboa/rfid
+ * for further details and other examples.
+ * 
+ * NOTE: The library file MFRC522.h has a lot of useful info. Please read it.
+ * 
+ * Released into the public domain.
+ * ----------------------------------------------------------------------------
+ * This sample shows how to read and write data blocks on a MIFARE Classic PICC
+ * (= card/tag).
+ * 
+ * BEWARE: Data will be written to the PICC, in sector #1 (blocks #4 to #7).
+ * 
+ * 
+ * Typical pin layout used:
+ * -----------------------------------------------------------------------------------------
+ *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
+ *             Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
+ * Signal      Pin          Pin           Pin       Pin        Pin              Pin
+ * -----------------------------------------------------------------------------------------
+ * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
+ * SPI SS      SDA(SS)      10            53        D10        10               10
+ * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
+ * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
+ * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
+ * 
+ */
+
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Crypto.h>
+#include <ChaCha.h>
+#include <string.h>
+#include <avr/pgmspace.h>
+
+constexpr uint8_t RST_PIN = 9;     // Configurable, see typical pin layout above
+constexpr uint8_t SS_PIN = 53;     // Configurable, see typical pin layout above
+
+MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
+
+byte dataBlock[] = {
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+
+byte haxx[] = {
+    0x10, 0x05, 0x00, 0x00,
+    0x04, 0x81, 0x69, 0xC2,
+    0xC4, 0x4E, 0x80, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0xCA, 0xFE, 0xCA, 0xFE,
+    0xCA, 0xFE, 0xCA, 0xFE
+};
+
+byte encrypted[] = {
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+
+byte decrypted[] = {
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+
+byte key[] = {
+    0xCB, 0x45, 0xF4, 0x6C, 
+    0xDD, 0xA7, 0xC0, 0x01, 
+    0x5E, 0xE2, 0xA0, 0x72, 
+    0x2E, 0xD8, 0x24, 0xFD};
+byte iv[] = {101,109,103,104,105,106,107,108};
+byte counter[] = {109, 110, 111, 112, 113, 114, 115, 116};
+
+boolean writing = false;
+float newBalance = 0;
+int switchPin = 22;
+int price = 0;
+int toggleBut = 5;
+int weight = 50;
+
+float lastDebounceTime = 0;
+bool crypto = true;
+uint8_t buttonState;
+bool lastButtonState = LOW;  
+
+ChaCha chacha;
+
+/**
+ * Initialize.
+ */
+ 
+void setup() {
+    Serial.begin(9600); // Initialize serial communications with the PC
+    while (!Serial);    // Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
+    SPI.begin();        // Init SPI bus
+    mfrc522.PCD_Init(); // Init MFRC522 card
+    Serial.println(F("BEWARE: Data will be written to the PICC, on pages #12 to 15"));
+    pinMode(switchPin, INPUT);
+    pinMode(toggleBut, INPUT);
+    Serial.println(sizeof(dataBlock));
+}
+
+/**
+ * Main loop.
+ */
+void loop() {
+    serialCommands();
+    buttonToggle();
+    // Look for new cards
+    if ( ! mfrc522.PICC_IsNewCardPresent())
+        return;
+
+    // Select one of the cards
+    if ( ! mfrc522.PICC_ReadCardSerial())
+        return;
+
+    // Show some details of the PICC (that is: the tag/card)
+    Serial.print(F("Card UID:"));
+    dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);
+    Serial.println();
+    Serial.print(F("PICC type: "));
+    MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
+    Serial.println(mfrc522.PICC_GetTypeName(piccType));
+
+    // Check for compatibility
+    if (piccType != MFRC522::PICC_TYPE_MIFARE_UL) {
+        Serial.println(F("This sample only works with MIFARE Ultralight C."));
+        return;
+    }
+
+    byte page = 4;
+    MFRC522::StatusCode status;
+    byte buffer[sizeof(dataBlock)];
+    byte size = sizeof(buffer);
+
+    // Show the whole memory as it currently is
+    Serial.println(F("Current data in memory;"));
+    mfrc522.PICC_DumpMifareUltralightToSerial();
+    Serial.println();
+
+    
+    if(!digitalRead(switchPin)){
+      Serial.println(F("READING MODE!!!"));
+      Serial.println(F("Copying pages 4 to 15 into dataBlock: "));
+      mfrc522.PICC_CopyMifareUltralightData(4,15, dataBlock);
+      Serial.println("dataBlock contains: ");
+      dump_byte_array(dataBlock, sizeof(dataBlock));
+      
+      if(crypto){
+        Serial.println("Decrypted dataBlock (decrypted byte[]) : ");
+        cipherInit(&chacha);
+        chacha.decrypt(dataBlock, dataBlock, sizeof(dataBlock));
+        dump_byte_array(dataBlock, sizeof(dataBlock));    
+        Serial.println("Current balance: "+String(((float)dataBlockToCash(dataBlock)/100)));
+        if(matchDatablockUid(dataBlock, &mfrc522.uid){
+          Serial.println("UID Matches, authentication successful");
+        }else{
+          Serial.println("UID mismatch!! Authentication FAILED :(");
+        }
+      }
+      
+    }
+    else if(digitalRead(switchPin)){
+      Serial.println(F("WRITING TURNED ON!"));      
+      Serial.print(F("Writing data into page ")); Serial.print(page);
+      Serial.println(F(" ..."));
+      
+//      // Read account info from card into dataBlock;
+//      mfrc522.PICC_CopyMifareUltralightData(4, 15, dataBlock);
+//
+//      // Decrypt card info
+//      cipherInit(&chacha);
+//      chacha.decrypt(dataBlock, dataBlock, sizeof(dataBlock));
+//      Serial.println("Decrypted dataBlock : ");
+//      dump_byte_array(dataBlock, sizeof(dataBlock));    
+//            
+//      // Previous balance read on card minus coffee bought
+//      newBalance = ((float) dataBlockToCash(dataBlock)) - (weight/250 * 50);
+//      price = (weight/250*50)/100;
+//      Serial.println();
+//      Serial.println("Old Balance before transaction: "+ String(dataBlockToCash(dataBlock)));
+//      Serial.println("New Balance after transaction: "+ String(newBalance/100));
+//      Serial.println("New Balance in int: "+ String((int) (newBalance)));
+//      Serial.println("Price: "+ String(price));
+//      Serial.println("Current balance after transaction: "+String(((float)dataBlockToCash(dataBlock)/100)));
+//      Serial.println();
+//      
+//      // Overwrite balance into dataBlock with new balance
+//      cashToDataBlock(dataBlock, (int) newBalance, &mfrc522.uid);
+//      Serial.println("dataBlock to be written: ");
+//      dump_byte_array(dataBlock, sizeof(dataBlock));
+//      Serial.println();
+      
+
+      //Encrypt before writing
+      Serial.println();
+      Serial.println("Encrypting before writing...");
+      cipherInit(&chacha);
+      chacha.encrypt(encrypted, haxx, sizeof(haxx));
+      Serial.println("Encrypted haxx : ");
+      dump_byte_array(encrypted, sizeof(encrypted));
+      Serial.println();
+
+      // Writing page by page
+      for(int i=0; i<sizeof(encrypted);i+=4){
+        dump_byte_array(encrypted+i, 4);
+        status = (MFRC522::StatusCode) mfrc522.MIFARE_Ultralight_Write(page+(i/4), encrypted+i, 4);
+        if (status != MFRC522::STATUS_OK) {
+            Serial.print(F("MIFARE_Write() failed: "));
+            Serial.println(mfrc522.GetStatusCodeName(status));
+        }
+      }
+      
+      // Read data from the block (again, should now be what we have written)
+      Serial.print(F("Reading data after write from page ")); Serial.print(page);
+      Serial.println(F(" ..."));
+      mfrc522.PICC_CopyMifareUltralightData(4,15, buffer);
+      
+      Serial.println(F("Data in pages 4 to 15 ")); 
+      dump_byte_array(buffer, sizeof(buffer)); 
+      Serial.println();
+
+
+      
+
+
+      
+//      mfrc522.PICC_CopyMifareUltralightData(12, dataBlock);
+//      int newCash = dataBlockToCash(dataBlock);
+//      Serial.println("Card balance is : "+ String(newCash));
+
+//      mfrc522.PICC_MatchUIDDataBlock(13, &mfrc522.uid);
+//      Serial.println("UID from block: ");
+//      dump_byte_array(dataBlock+4,7); 
+      
+    }
+//        
+//    // Dump the sector data
+//    Serial.println(F("Current data in sector:"));
+//    mfrc522.PICC_DumpMifareClassicSectorToSerial(&(mfrc522.uid), &key, sector);
+//    Serial.println();
+
+    // Halt PICC
+    mfrc522.PICC_HaltA();
+    // Stop encryption on PCD
+    //-mfrc522.PCD_StopCrypto1();
+    
+}
+
+/**
+ * Helper routine to dump a byte array as hex values to Serial.
+ */
+void dump_byte_array(byte *buffer, byte bufferSize) {
+    for (byte i = 0; i < bufferSize; i++) {
+        Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+        Serial.print(buffer[i], HEX);
+        if(i%4==3){
+          Serial.println();
+        }
+    }
+}
+
+void cipherInit(ChaCha *cipher){
+    cipher->clear();
+    if (!cipher->setKey(key, 16)) {
+        Serial.println("Error setKey");
+        return false;
+    }
+    if (!cipher->setIV(iv, 8)) {
+        Serial.println("Error setIV");
+        return false;
+    }
+    if (!cipher->setCounter(counter, 8)) {
+        Serial.println("Error setCounter");
+        return false;
+    }
+}
+
+void cipherEncrypt(ChaCha *cipher, byte* output, byte* dataBlock){
+    size_t posn, len;
+    for (posn = 0; posn < sizeof(dataBlock); posn += 4) {
+      len = sizeof(dataBlock) - posn;
+      if (len > 4)
+          len = 4;
+        cipher->encrypt(output + posn, dataBlock + posn, len);
+    }
+}
+
+
+void cipherDecrypt(ChaCha *cipher, byte* output, byte* dataBlock){
+    size_t posn, len;
+    for (posn = 0; posn < sizeof(dataBlock); posn += 4) {
+      len = sizeof(dataBlock) - posn;
+      if (len > 4)
+          len = 4;
+        cipher->decrypt(output + posn, dataBlock + posn, len);
+    }
+}
+
+// Create a data block with the amount to write to card
+// 16byte block structure
+// First byte is dollars, second byte is cents, third byte is sign, 0 = positive, 1 = negative
+// bytes 5 to 11 are for UID storage
+void cashToDataBlock(byte* dataBlock, int cash, MFRC522::Uid * uid){
+  byte sign = cash<0 ? 1 : 0;
+  byte dollars = cash/100;
+  byte cents   = cash % 100;
+  dataBlock[0] = dollars;
+  dataBlock[1] = cents;
+  dataBlock[2] = sign;
+  for(int i=4 ;i<uid->size+4;i++){
+    dataBlock[i] = (uid->uidByte)[i-4];
+  }
+  for(int i=11 ;i<40;i++){
+    dataBlock[i] = 0x00;
+  }
+  for(int i=40 ; i < 48 ; i++){
+    if(i%2 == 0){
+      dataBlock[i] = 0xCA;
+    }
+    else{
+      dataBlock[i] = 0xFE;
+    }
+  }
+}
+
+int dataBlockToCash(byte* dataBlock){
+  int balance = ((int) dataBlock[0]) *100 + ((int) dataBlock[1]);
+  balance *= dataBlock[3] == 0? 1: -1;
+  return balance; 
+}
+
+bool matchDatablockUid(byte* dataBlock, MFRC522::Uid * uid){
+  for(int i=0; i<uid->size; i++){
+    if(dataBlock[i+4] != (uid->uidByte)[i]){
+      return false; 
+    }
+  }
+  return true;
+}
+
+
+void serialCommands(){
+  if(Serial.available())
+  {
+    String temp = Serial.readString();
+    if(temp =="w"){
+      writing = writing? false:true;
+      Serial.println("Writing status changed ");
+    }
+    else if(temp.substring(0,2) =="gr"){
+      weight = temp.substring(3).toInt();
+      Serial.println("Weight changed to: "+temp.substring(3));
+    }
+    else{ 
+      price = temp.toFloat();
+      Serial.println("Price set to "+ String(price));
+    }
+    
+  }
+}
+
+void buttonToggle(){
+  uint8_t reading = digitalRead(toggleBut);
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > 50) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == HIGH) {
+        Serial.println("Crypto status changed ");
+        crypto = ! crypto;
+      }
+    }
+  }
+  lastButtonState = reading;
+}

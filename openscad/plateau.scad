@@ -39,15 +39,15 @@ module insere() {
 
 module baseBas(diam=160) {
     difference() {
-        cylinder(d=diam,h=3);
-        for(i=[-2:2]) {
+        translate([0,0,0]) cylinder(d=diam,h=6);
+        *for(i=[-2:2]) {
             rotate([0,0,0+180+60*i])
                 translate([50/160*diam,0,0])
                 cylinder(d=45/160*diam,h=100,center=true);
         }
-        for(i=[-3:3]) {
-            rotate([0,0,0+180+60*i-30])
-                translate([65/160*diam,0,0])
+        for(i=[-4:6]) {
+            rotate([0,0,0+180+30*i-30])
+                translate([55/160*diam,0,0])
                 cylinder(d=15/160*diam,h=100,center=true);
         }
         cylinder(d=45/160*diam,h=100,center=true);
@@ -62,21 +62,23 @@ module couvercle(topD=130,bottomD=160,H=22,ep=2) {
         hull() {
             cylinder(d=topD+ep+1,h=4+ep);
             translate([0,0,-H]) cylinder(d=bottomD+ep+1,h=1);
+            ecranSimple();
         }
         translate([0,0,-1]) cylinder(d=topD+1,h=4+1+0.25);
         hull() {
             cylinder(d=topD+1,h=2);
             translate([0,0,-H-0.1]) cylinder(d=bottomD,h=1);
+            ecranSimple();
         }
-        translate([0,0,0.25]) children();
+        translate([0,0,1.5]) children();
     }
     
 }
 
-module rebord(diam=160,extraD=25,extraH=4) {
+module rebord(diam=160,extraD=30,extraH=5) {
     difference() {
         hull() {
-            cylinder(d=diam,h=4+extraH);
+            cylinder(d=diam,h=5+extraH);
             cylinder(d=diam+extraD,h=1);
         }
         cylinder(d=diam-4,h=30,center=true);
@@ -102,22 +104,22 @@ module flip() {
 //
 
 //translate([0,0,40])
-cut()
+//cut()
 //flip()
-color("purple") couvercle(ep=1) deplace() rebord(diam=160-10);
+*color("yellow") couvercle(ep=1) deplace() rebord(diam=160-10);
 
 //
 // plateau balance du haut
 //
 
 //flip()
-union() {
+*union() {
     base(diam=130);
     poidsA();
 }
 
 // barre de la balance
-%poidsBarre();
+//%poidsBarre();
 
 //
 // plateau balance du bas
@@ -130,6 +132,27 @@ union() {
     deplace() rebord(diam=160-10);
 }
 
+
+module ecran() {
+    difference() {
+        union() {
+            color("blue") translate([0,0,-2.5]) cube([29.5,14.7,5],center=true);
+            translate([0,0,-3]) cube([35,35,5],center=true);
+        }
+        for(i=[-1,1]) {
+            for(j=[-1,1]) {
+                translate([i*29.5/2,j*29/2,0]) cylinder(d=2.5,h=20,center=true);
+            }
+        } 
+    }
+}
+module ecranSimple() {
+    translate([0,0,-3]) cube([35,35,5],center=true);
+}
+
+
+*translate([0,-80,-8])
+rotate([45,0,0]) ecranSimple();
 
 
 
